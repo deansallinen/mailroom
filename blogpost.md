@@ -137,9 +137,111 @@ GET /api/v1/parcels 200 5.857 ms - 11
 It's saying that it isn't receiving json back from the server, so let's correct that by first opening `app.js` and adding
 
 ```javascript
-app.get('/api/v1/parcels', function(req, res, next) {
-  res.send('Get parcels');
+// Routes
+app.get('/api/v1/parcels', async (req, res, next) => {
+  try {
+    const db = await dbPromise;
+    const parcels = await db.all('SELECT * FROM parcels');
+    res.send(parcels);
+  } catch (err) {
+    next(err);
+  }
 });
 ```
 
-to access our database using SQL queries. So how do we do that? Our `dbPromise` lives in App.js
+So now when our client hits the '/api/v1/parcels' route the server opens a connection to the database, selects all parcels from our parcels table, and sends the result back to the client.
+
+Before we write the code that lets us add a new parcel, we need some helpers. Lets run `npm install uuid -s` and in `app.js` add
+
+```javascript
+const uuidv4 = require('uuid/v4');
+```
+
+Lets write another test, inside the same 'API Routes' function block just underneath the 'GET /api/v1/parcels' test, this time for posting a new parcel to the server:
+
+```javascript
+describe('POST /api/v1/parcels', function() {
+    it('should create and return one parcel', function(done) {
+      chai
+        .request(server)
+        .post('/api/v1/parcels')
+        .send({
+          user_id: 'Dean',
+          street_address: '1234 Main St',
+          recipient_name: 'test',
+          recipient_first_name: 'test',
+          recipient_last_name: 'test',
+          organization_name: 'test',
+          city: 'test',
+          state_or_province: 'test',
+          country: 'test',
+          postal_code: 'test',
+          barcode: '0e2887fc-19c9-4bf5-a9fc-0c5f5a23a87c',
+          parcel_status: 'test',
+          creation_date: 'test',
+        })
+        .end(function(err, res) {
+          res.should.have.status(200);
+          done();
+        });
+    });
+```
+
+Notice how we don't have every field? When we are creating a new parcel, this is the data the user will enter. When the mailroom later updates the parcel with the shipping information and the package dimensions, they will update this record.
+
+And again we go into `app.js` to add a route:
+
+```javascript
+app.post('/api/v1/parcels', async (req, res, next) => {
+  try {
+    const uuid = uuidv4();
+    const db = await dbPromise;
+    const parcels = await db.run(
+      `INSERT INTO parcels (
+            user_id,
+            street_address,
+            recipient_name,
+            recipient_first_name,
+            recipient_last_name,
+            organization_name,
+            city,
+            state_or_province,
+            country,
+            postal_code,
+            barcode,
+            parcel_status,
+            creation_date) 
+        VALUES (       
+            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [
+        req.body.user_id,
+        req.body.street_address,
+        req.body.recipient_name,
+        req.body.recipient_first_name,
+        req.body.recipient_last_name,
+        req.body.organization_name,
+        req.body.city,
+        req.body.state_or_province,
+        req.body.country,
+        req.body.postal_code,
+        uuid,
+        req.body.parcel_status,
+        new Date().toISOString()
+      ]
+    );
+    res.send(uuid);
+  } catch (err) {
+    next(err);
+  }
+});
+```
+
+Here when a client hits the `/api/v1/parcels` route with a POST request and supplies address information that is saved in the database as a new record. Notice how we are using `uuidv4()` to generate a unique code for each record. We return the uuid as the `res`, the idea being we will use this to generate the barcode in the front-end. We also use `new Date().toISOString()` to add a timestamp of when that record was created.
+
+If you're wondering (like I did) why it seems like the POST request is updating and not inserting new values each time the test is run, it's because we added `{ force: 'last' }` to re-run the latest migration every time we restart our server. So even though it looks like the barcode and creation_date are changing in place, it's really:
+
+1.  Dropping the parcels table
+2.  Inserting the two sample rows in our 001-init.sql file
+3.  POSTing the new row with the new data
+
+To
