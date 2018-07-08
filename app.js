@@ -33,6 +33,19 @@ app.get('/api/v1/parcels', async (req, res, next) => {
   }
 });
 
+app.get('/api/v1/parcels/:barcode', async (req, res, next) => {
+  try {
+    const db = await dbPromise;
+    const parcels = await db.get(
+      'SELECT * FROM parcels WHERE barcode = ?',
+      req.params.barcode
+    );
+    res.send(parcels);
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.post('/api/v1/parcels', async (req, res, next) => {
   try {
     const uuid = uuidv4();
@@ -71,6 +84,50 @@ app.post('/api/v1/parcels', async (req, res, next) => {
       ]
     );
     res.send(uuid);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.put('/api/v1/parcels/:barcode', async (req, res, next) => {
+  try {
+    const payload = {
+      $barcode: req.params.barcode,
+      $parcel_weight: req.body.parcel_weight,
+      $parcel_length: req.body.parcel_length,
+      $parcel_width: req.body.parcel_width,
+      $parcel_height: req.body.parcel_height,
+      $shipping_method: req.body.shipping_method,
+      $parcel_status: req.body.parcel_status,
+      $received_date: new Date().toISOString()
+    };
+    const db = await dbPromise;
+    const parcels = await db.run(
+      `UPDATE parcels SET
+            parcel_weight=$parcel_weight,
+            parcel_length=$parcel_length,
+            parcel_width=$parcel_width,
+            parcel_height=$parcel_height,
+            shipping_method=$shipping_method,
+            parcel_status=$parcel_status,
+            received_date=$received_date
+            WHERE barcode = $barcode`,
+      payload
+    );
+    res.json(parcels.changes);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete('/api/v1/parcels/:barcode', async (req, res, next) => {
+  try {
+    const db = await dbPromise;
+    const parcels = await db.run(
+      'DELETE FROM parcels WHERE barcode = ?',
+      req.params.barcode
+    );
+    res.json(parcels);
   } catch (err) {
     next(err);
   }

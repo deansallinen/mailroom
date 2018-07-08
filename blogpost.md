@@ -88,6 +88,8 @@ const server = require('../app');
 chai.use(chaiHTTP);
 ```
 
+### GET
+
 Now we can describe our first test. Let's test that when we hit the `/api/v1/parcels` URL we receive an array of all parcels in the database.
 
 ```javascript
@@ -151,6 +153,8 @@ app.get('/api/v1/parcels', async (req, res, next) => {
 
 So now when our client hits the '/api/v1/parcels' route the server opens a connection to the database, selects all parcels from our parcels table, and sends the result back to the client.
 
+### POST
+
 Before we write the code that lets us add a new parcel, we need some helpers. Lets run `npm install uuid -s` and in `app.js` add
 
 ```javascript
@@ -161,7 +165,7 @@ Lets write another test, inside the same 'API Routes' function block just undern
 
 ```javascript
 describe('POST /api/v1/parcels', function() {
-    it('should create and return one parcel', function(done) {
+    it('should create one parcel', function(done) {
       chai
         .request(server)
         .post('/api/v1/parcels')
@@ -244,4 +248,239 @@ If you're wondering (like I did) why it seems like the POST request is updating 
 2.  Inserting the two sample rows in our 001-init.sql file
 3.  POSTing the new row with the new data
 
-To
+### PUT
+
+When a package is received by the mailroom IRL they will scan the barcode and pull up the parcel in the database to add shipping information and package dimensions.
+
+So before we can make updates to parcels, we need to be able to GET individual parcels by their barcode.
+
+In `routes.spec.js` we can add a new test for the new route we are about to create:
+
+```javascript
+describe('GET /api/v1/parcels/:barcode', function() {
+  it('should return one parcel', function(done) {
+    chai
+      .request(server)
+      .get('/api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebc')
+      .end(function(err, res) {
+        res.should.have.status(200);
+        res.should.be.json;
+        res.body.should.be.a('object');
+        done();
+      });
+  });
+});
+```
+
+Here we are using a barcode from one of our sample rows in the 001-init.sql file as these are static and easy to reference.
+
+Run the test with `mocha` and see that it fails with a 404. Now we need to write the route. In app.js under our other routes add:
+
+```javascript
+app.get('/api/v1/parcels/:barcode', async (req, res, next) => {
+  try {
+    const db = await dbPromise;
+    const parcels = await db.get(
+      'SELECT * FROM parcels WHERE barcode = ?',
+      req.params.barcode
+    );
+    res.send(parcels);
+  } catch (err) {
+    next(err);
+  }
+});
+```
+
+Rerun the test and voila! 3 passing tests. You can even verify in the browser by entering http://localhost:3000/api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebc and seeing our test data.
+
+Now that the mailroom can access a single record, we need to be able to update that record. Let's write a test. Because sqlite doesn't return the inserted row as an object, it only returns the number of rows modified, we'll test that the number of modified rows is non-zero:
+
+```javascript
+describe('PUT /api/v1/parcels/:barcode', function() {
+  it('should update one parcel', function(done) {
+    chai
+      .request(server)
+      .put('/api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebc')
+      .send({
+        parcel_weight: '1',
+        parcel_length: '2',
+        parcel_width: '3',
+        parcel_height: '4',
+        shipping_method: 'Expedited',
+        parcel_status: 'Received'
+      })
+      .end(function(err, res) {
+        res.should.have.status(200);
+        res.should.be.json;
+        res.body.should.not.equal(0);
+        done();
+      });
+  });
+});
+```
+
+and it fails. Good. Now the route. This looks a little different than the previous route we made:
+
+```javascript
+app.put('/api/v1/parcels/:barcode', async (req, res, next) => {
+  try {
+    const payload = {
+      $barcode: req.params.barcode,
+      $parcel_weight: req.body.parcel_weight,
+      $parcel_length: req.body.parcel_length,
+      $parcel_width: req.body.parcel_width,
+      $parcel_height: req.body.parcel_height,
+      $shipping_method: req.body.shipping_method,
+      $parcel_status: req.body.parcel_status,
+      $received_date: new Date().toISOString()
+    };
+    const db = await dbPromise;
+    const parcels = await db.run(
+      `UPDATE parcels SET
+            parcel_weight=$parcel_weight,
+            parcel_length=$parcel_length,
+            parcel_width=$parcel_width,
+            parcel_height=$parcel_height,
+            shipping_method=$shipping_method,
+            parcel_status=$parcel_status,
+            received_date=$received_date
+            WHERE barcode = $barcode`,
+      payload
+    );
+    res.json(parcels.changes);
+  } catch (err) {
+    next(err);
+  }
+});
+```
+
+Instead of sending an array of values as the payload we can send an object with key:value pairs. Make sure to include the `$` in front of the key otherwise sqlite won't recognize it as a placeholder! (multiple hours spent trying to figure out why this wasn't working...)
+
+### DELETE
+
+Okay, now we have the ability to CREATE, READ, and UPDATE. Our envisioned use case doesn't have users deleting records, I think we would like to maintain old records for archival purposes. However, for completeness we'll add a simple DELETE route.
+
+Let's first add another sample into our `001-init.sql` file with a static barcode. Add this ABOVE the previous insert, as we will see why in a second.
+
+```sql
+INSERT INTO parcels
+    (user_id, street_address, recipient_name,
+    organization_name, city, state_or_province, country, postal_code, barcode)
+VALUES
+    ("1A", "I SHOULD BE DELETED", "Iron Man", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebb");
+```
+
+Now let's write a test in our `routes.spec.js` file for our deletion:
+
+```javascript
+describe('DELETE /api/v1/parcels/:barcode', function() {
+  it('should delete one parcel', function(done) {
+    chai
+      .request(server)
+      .delete('/api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebb')
+      .end(function(err, res) {
+        res.should.have.status(200);
+        res.should.be.json;
+      });
+    chai
+      .request(server)
+      .get('/api/v1/parcels/')
+      .end(function(err, res) {
+        res.should.have.status(200);
+        res.should.be.json;
+        res.body.should.be.a('array');
+        res.body[0].should.have.property('barcode');
+        res.body[0].barcode.should.equal(
+          'f34c6658-818b-11e8-adc0-fa7ae01bbebc'
+        );
+      });
+    done();
+  });
+});
+```
+
+Here we are sending a request to the server to delete the parcel with "I SHOULD BE DELETED" as an address (note the 'bb' at the end of the barcode instead of the 'bc').
+
+The second request to the server is to get back the full list of parcels, and if the delete works as intended, the first parcel (in position [0]) should now be our parcel with barcode ending in 'bc'.
+
+Run the test. It fails. Now write the route.
+
+```javascript
+app.delete('/api/v1/parcels/:barcode', async (req, res, next) => {
+  try {
+    const db = await dbPromise;
+    const parcels = await db.run(
+      'DELETE FROM parcels WHERE barcode = ?',
+      req.params.barcode
+    );
+    res.json(parcels);
+  } catch (err) {
+    next(err);
+  }
+});
+```
+
+Run the tests...
+
+```
+deans-Mac-Pro:mailroom dean$ mocha
+
+
+  API Routes
+    GET /api/v1/parcels
+GET /api/v1/parcels 200 5.799 ms - 1037
+      ✓ should return all parcels
+    GET /api/v1/parcels/:barcode
+GET /api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebc 200 1.022 ms - 517
+      ✓ should return one parcel
+    DELETE /api/v1/parcels/:barcode
+      ✓ should delete one parcel
+    PUT /api/v1/parcels/:barcode
+DELETE /api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebb 200 2.549 ms - 79
+GET /api/v1/parcels/ 200 2.028 ms - 519
+PUT /api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebc 200 1.289 ms - 1
+      ✓ should update one parcel
+    POST /api/v1/parcels
+POST /api/v1/parcels 200 1.686 ms - 36
+      ✓ should create one parcel
+
+
+  5 passing (79ms)
+```
+
+And it works! Now we have a fully functional basic CRUD API.
+
+## Front End
+
+I would like to have the front end built with React to take advantage of component architecture, however to quickly test that everything works we can build a simple HTML page.
+
+We should already have a page called `index.html` in our ./public folder. Let's open that up and add a basic form.
+
+Here's what `index.html` should look like:
+
+```html
+<html>
+
+<head>
+  <title>Express</title>
+  <link rel="stylesheet" href="/stylesheets/style.css">
+</head>
+
+<body>
+  <h1>Express</h1>
+  <p>Welcome to Express</p>
+
+  <form action="/api/v1/parcels" method="post">
+    User ID:
+    <input type="text" name="user_id">
+    <input type="submit" value="Submit">
+  </form>
+
+</body>
+
+</html>
+```
+
+Now open http://localhost:3000 and try it out!
+
+So what's happening here is when you type your User ID in the text field and hit the submit button we use the POST route we made earlier to create a new record in our database. As we can see by the random string of numbers and letters we receive back, we are successfully viewing the barcode of our created entry.

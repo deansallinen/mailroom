@@ -28,12 +28,12 @@ INSERT INTO parcels
     (user_id, street_address, recipient_name,
     organization_name, city, state_or_province, country, postal_code, barcode)
 VALUES
-    ("1A", "123 Example Street", "Spiderman", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebc");
+    ("1A", "I SHOULD BE DELETED", "Iron Man", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebb");
 INSERT INTO parcels
     (user_id, street_address, recipient_name,
     organization_name, city, state_or_province, country, postal_code, barcode)
 VALUES
-    ("1A", "123 Example Street", "Iron Man", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebc");
+    ("1A", "123 Example Street", "Spiderman", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebc");
 
 -- Down
 DROP TABLE parcels;
