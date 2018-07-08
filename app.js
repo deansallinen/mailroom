@@ -49,39 +49,61 @@ app.get('/api/v1/parcels/:barcode', async (req, res, next) => {
 app.post('/api/v1/parcels', async (req, res, next) => {
   try {
     const uuid = uuidv4();
+    const payload = {
+      $user_id: req.body.user_id,
+      $file_id: req.body.file_id,
+      $street_address: req.body.street_address,
+      $attn_name: req.body.attn_name,
+      $attn_phone: req.body.attn_phone,
+      $attn_organization: req.body.attn_organization,
+      $city: req.body.city,
+      $state_or_province: req.body.state_or_province,
+      $country: req.body.country,
+      $postal_code: req.body.postal_code,
+      $shipment_status: 'created',
+      $shipment_type: req.body.shipment_type,
+      $shipment_locale: req.body.shipment_locale,
+      $shipment_speed: req.body.shipment_speed,
+      $barcode: uuid,
+      $creation_date: new Date().toISOString()
+    };
     const db = await dbPromise;
     const parcels = await db.run(
       `INSERT INTO parcels (
             user_id,
+            file_id,
             street_address,
-            recipient_name,
-            recipient_first_name,
-            recipient_last_name,
-            organization_name,
+            attn_name,
+            attn_phone,
+            attn_organization,
             city,
             state_or_province,
             country,
             postal_code,
             barcode,
-            parcel_status,
+            shipment_status,
+            shipment_type,
+            shipment_locale,
+            shipment_speed,
             creation_date) 
-        VALUES (       
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [
-        req.body.user_id,
-        req.body.street_address,
-        req.body.recipient_name,
-        req.body.recipient_first_name,
-        req.body.recipient_last_name,
-        req.body.organization_name,
-        req.body.city,
-        req.body.state_or_province,
-        req.body.country,
-        req.body.postal_code,
-        uuid,
-        req.body.parcel_status,
-        new Date().toISOString()
-      ]
+            VALUES (       
+              $user_id,
+            $file_id,
+            $street_address,
+            $attn_name,
+            $attn_phone,
+            $attn_organization,
+            $city,
+            $state_or_province,
+            $country,
+            $postal_code,
+            $barcode,
+            $shipment_status,
+            $shipment_type,
+            $shipment_locale,
+            $shipment_speed,
+            $creation_date)`,
+      payload
     );
     res.send(uuid);
   } catch (err) {
@@ -93,23 +115,23 @@ app.put('/api/v1/parcels/:barcode', async (req, res, next) => {
   try {
     const payload = {
       $barcode: req.params.barcode,
-      $parcel_weight: req.body.parcel_weight,
-      $parcel_length: req.body.parcel_length,
-      $parcel_width: req.body.parcel_width,
-      $parcel_height: req.body.parcel_height,
+      $shipment_weight: req.body.shipment_weight,
+      $shipment_length: req.body.shipment_length,
+      $shipment_width: req.body.shipment_width,
+      $shipment_height: req.body.shipment_height,
       $shipping_method: req.body.shipping_method,
-      $parcel_status: req.body.parcel_status,
+      $shipment_status: req.body.shipment_status,
       $received_date: new Date().toISOString()
     };
     const db = await dbPromise;
     const parcels = await db.run(
       `UPDATE parcels SET
-            parcel_weight=$parcel_weight,
-            parcel_length=$parcel_length,
-            parcel_width=$parcel_width,
-            parcel_height=$parcel_height,
+            shipment_weight=$shipment_weight,
+            shipment_length=$shipment_length,
+            shipment_width=$shipment_width,
+            shipment_height=$shipment_height,
             shipping_method=$shipping_method,
-            parcel_status=$parcel_status,
+            shipment_status=$shipment_status,
             received_date=$received_date
             WHERE barcode = $barcode`,
       payload

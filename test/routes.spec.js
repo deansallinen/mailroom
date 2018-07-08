@@ -65,12 +65,12 @@ describe('API Routes', function() {
         .request(server)
         .put('/api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebc')
         .send({
-          parcel_weight: '1',
-          parcel_length: '2',
-          parcel_width: '3',
-          parcel_height: '4',
+          shipment_weight: '1',
+          shipment_length: '2',
+          shipment_width: '3',
+          shipment_height: '4',
           shipping_method: 'Expedited',
-          parcel_status: 'Received'
+          shipment_status: 'Received'
         })
         .end(function(err, res) {
           res.should.have.status(200);
@@ -89,22 +89,13 @@ describe('API Routes', function() {
         .send({
           user_id: 'Someone Else',
           street_address: '1234 Main St',
-          recipient_name: 'test',
-          recipient_first_name: 'test',
-          recipient_last_name: 'test',
-          organization_name: 'test',
+          attn_name: 'test',
+          attn_organization: 'test',
           city: 'test',
           state_or_province: 'test',
           country: 'test',
           postal_code: 'test',
-          post_tracking_number: 'test',
-          parcel_weight: '1',
-          parcel_length: '1',
-          parcel_width: '1',
-          parcel_height: '1',
-          shipping_method: 'test',
-          parcel_status: 'test',
-          received_date: 'test'
+          shipment_status: 'test'
         })
         .end(function(err, res) {
           res.should.have.status(200);

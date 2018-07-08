@@ -30,32 +30,37 @@ CREATE TABLE parcels
 (
     id INTEGER PRIMARY KEY,
     user_id TEXT,
+    file_id TEXT,
+    shipment_type TEXT,
+    shipment_destination TEXT,
+    shipment_speed TEXT,
+    attn_name TEXT,
+    attn_phone TEXT,
+    attn_organization TEXT,
     street_address TEXT,
-    recipient_name TEXT,
-    recipient_first_name TEXT,
-    recipient_last_name TEXT,
-    organization_name TEXT,
     city TEXT,
     state_or_province TEXT,
     country TEXT,
     postal_code TEXT,
+    us_value_of_goods TEXT,
+    us_content_declaration TEXT,
     barcode TEXT,
-    post_tracking_number TEXT,
-    parcel_weight INT,
-    parcel_length INT,
-    parcel_width INT,
-    parcel_height INT,
+    carrier_tracking_number TEXT,
+    shipment_weight INT,
+    shipment_length INT,
+    shipment_width INT,
+    shipment_height INT,
     shipping_method TEXT,
-    parcel_status TEXT,
+    shipment_status TEXT,
     creation_date TEXT,
     received_date TEXT
 );
 
 INSERT INTO parcels
-    (user_id, street_address, recipient_name,
-    organization_name, city, state_or_province, country, postal_code, barcode)
+    (user_id, street_address, attn_name,
+    attn_organization, city, state_or_province, country, postal_code, barcode)
 VALUES
-    ("1A", "123 Example Street", "Iron Man", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebc")
+    ("1A", "123 Example Street", "Spiderman", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebc");
 
 -- Down
 DROP TABLE parcels;
@@ -176,16 +181,14 @@ describe('POST /api/v1/parcels', function() {
         .send({
           user_id: 'Dean',
           street_address: '1234 Main St',
-          recipient_name: 'test',
-          recipient_first_name: 'test',
-          recipient_last_name: 'test',
-          organization_name: 'test',
+          attn_name: 'test',
+          attn_organization: 'test',
           city: 'test',
           state_or_province: 'test',
           country: 'test',
           postal_code: 'test',
           barcode: '0e2887fc-19c9-4bf5-a9fc-0c5f5a23a87c',
-          parcel_status: 'test',
+          shipment_status: 'test',
           creation_date: 'test',
         })
         .end(function(err, res) {
@@ -202,40 +205,49 @@ And again we go into `app.js` to add a route:
 ```javascript
 app.post('/api/v1/parcels', async (req, res, next) => {
   try {
+    const payload = {
+      $user_id: req.body.user_id,
+      $street_address: req.body.street_address,
+      $attn_name: req.body.attn_name,
+      $recipient_first_name: req.body.recipient_first_name,
+      $recipient_last_name: req.body.recipient_last_name,
+      $attn_organization: req.body.attn_organization,
+      $city: req.body.city,
+      $state_or_province: req.body.state_or_province,
+      $country: req.body.country,
+      $postal_code: req.body.postal_code,
+      $uuid: uuid,
+      $parcel_status: req.body.parcel_status,
+      $creation_date: new Date().toISOString()
+    };
     const uuid = uuidv4();
     const db = await dbPromise;
     const parcels = await db.run(
       `INSERT INTO parcels (
             user_id,
             street_address,
-            recipient_name,
-            recipient_first_name,
-            recipient_last_name,
-            organization_name,
+            attn_name,
+            attn_organization,
             city,
             state_or_province,
             country,
             postal_code,
             barcode,
-            parcel_status,
+            shipment_status,
             creation_date) 
         VALUES (       
-            $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
-      [
-        req.body.user_id,
-        req.body.street_address,
-        req.body.recipient_name,
-        req.body.recipient_first_name,
-        req.body.recipient_last_name,
-        req.body.organization_name,
-        req.body.city,
-        req.body.state_or_province,
-        req.body.country,
-        req.body.postal_code,
-        uuid,
-        req.body.parcel_status,
-        new Date().toISOString()
-      ]
+            $user_id,
+            $street_address,
+            $attn_name,
+            $attn_organization,
+            $city,
+            $state_or_province,
+            $country,
+            $postal_code,
+            $barcode,
+            $shipment_status,
+            $creation_date)`,
+      payload
     );
     res.send(uuid);
   } catch (err) {
@@ -243,6 +255,8 @@ app.post('/api/v1/parcels', async (req, res, next) => {
   }
 });
 ```
+
+Instead of sending an array of values as the payload we can send an object with key:value pairs. Make sure to include the `$` in front of the key otherwise sqlite won't recognize it as a placeholder! (multiple hours spent trying to figure out why this wasn't working...)
 
 Here when a client hits the `/api/v1/parcels` route with a POST request and supplies address information that is saved in the database as a new record. Notice how we are using `uuidv4()` to generate a unique code for each record. We return the uuid as the response, the idea being we will use this to generate the barcode in the front-end. We also use `new Date().toISOString()` to add a timestamp of when that record was created.
 
@@ -306,12 +320,12 @@ describe('PUT /api/v1/parcels/:barcode', function() {
       .request(server)
       .put('/api/v1/parcels/f34c6658-818b-11e8-adc0-fa7ae01bbebc')
       .send({
-        parcel_weight: '1',
-        parcel_length: '2',
-        parcel_width: '3',
-        parcel_height: '4',
+        shipment_weight: '1',
+        shipment_length: '2',
+        shipment_width: '3',
+        shipment_height: '4',
         shipping_method: 'Expedited',
-        parcel_status: 'Received'
+        shipment_status: 'Received'
       })
       .end(function(err, res) {
         res.should.have.status(200);
@@ -330,23 +344,23 @@ app.put('/api/v1/parcels/:barcode', async (req, res, next) => {
   try {
     const payload = {
       $barcode: req.params.barcode,
-      $parcel_weight: req.body.parcel_weight,
-      $parcel_length: req.body.parcel_length,
-      $parcel_width: req.body.parcel_width,
-      $parcel_height: req.body.parcel_height,
+      $shipment_weight: req.body.shipment_weight,
+      $shipment_length: req.body.shipment_length,
+      $shipment_width: req.body.shipment_width,
+      $shipment_height: req.body.shipment_height,
       $shipping_method: req.body.shipping_method,
-      $parcel_status: req.body.parcel_status,
+      $shipment_status: req.body.shipment_status,
       $received_date: new Date().toISOString()
     };
     const db = await dbPromise;
     const parcels = await db.run(
       `UPDATE parcels SET
-            parcel_weight=$parcel_weight,
-            parcel_length=$parcel_length,
-            parcel_width=$parcel_width,
-            parcel_height=$parcel_height,
+            shipment_weight=$shipment_weight,
+            shipment_length=$shipment_length,
+            shipment_width=$shipment_width,
+            shipment_height=$shipment_height,
             shipping_method=$shipping_method,
-            parcel_status=$parcel_status,
+            shipment_status=$shipment_status,
             received_date=$received_date
             WHERE barcode = $barcode`,
       payload
@@ -358,8 +372,6 @@ app.put('/api/v1/parcels/:barcode', async (req, res, next) => {
 });
 ```
 
-Instead of sending an array of values as the payload we can send an object with key:value pairs. Make sure to include the `$` in front of the key otherwise sqlite won't recognize it as a placeholder! (multiple hours spent trying to figure out why this wasn't working...)
-
 ### DELETE
 
 Okay, now we have the ability to CREATE, READ, and UPDATE. Our envisioned use case doesn't have users deleting records, I think we would like to maintain old records for archival purposes. However, for completeness we'll add a simple DELETE route.
@@ -368,8 +380,8 @@ Let's first add another sample into our `001-init.sql` file with a static barcod
 
 ```sql
 INSERT INTO parcels
-    (user_id, street_address, recipient_name,
-    organization_name, city, state_or_province, country, postal_code, barcode)
+    (user_id, street_address, attn_name,
+    attn_organization, city, state_or_province, country, postal_code, barcode)
 VALUES
     ("1A", "I SHOULD BE DELETED", "Iron Man", "The Avengers", "New York City", "New York", "US", "12345", "f34c6658-818b-11e8-adc0-fa7ae01bbebb");
 ```
@@ -496,3 +508,11 @@ So what's happening here is when you type your User ID in the text field and hit
 As we can see by the random string of numbers and letters we receive back, we are successfully viewing the barcode of our created entry.
 
 ![screenshot of JSON from database](/screenshots/003.png)
+
+At this point we will add additional fields from our database.
+
+We will also add any remaining fields to the routes.
+
+Now our webpage looks like this! (I also just learned how to take nicer screenshots of the selected window)
+
+![screenshot of user view](/screenshots/004.png)

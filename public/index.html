@@ -6,12 +6,62 @@
 </head>
 
 <body>
-  <h1>Express</h1>
-  <p>Welcome to Express</p>
+  <h1>User View</h1>
+  <p>Please fill out the following form to generate your shipping code</p>
 
   <form action="/api/v1/parcels" method="post">
-    User ID:
-    <input type="text" name="user_id">
+    <fieldset>
+      <legend>User Information</legend>
+      User ID:
+      <input type="text" name="user_id">
+      <br> File Number:
+      <input type="text" name="file_id">
+    </fieldset>
+    <br>
+    <fieldset>
+      <legend>Package Information</legend>
+      <input type="radio" name="shipment_type" value="mail"> Mail
+      <input type="radio" name="shipment_type" value="parcel"> Parcel
+
+      <br> Destination:
+      <select name="shipment_locale">
+        <option value="local">Within the Lower Mainland</option>
+        <option value="national">Within Canada</option>
+        <option value="international">International</option>
+      </select>
+
+      <br> Shipping Speed:
+      <select name="shipment_speed">
+        <option value="one">One</option>
+        <option value="two">Two</option>
+        <option value="three">Three</option>
+      </select>
+    </fieldset>
+    <br>
+    <fieldset>
+      <legend>Recipient Information</legend>
+      Recipient Name:
+      <input type="text" name="attn_name">
+      <br> Phone Number:
+      <input type="tel" name="attn_phone">
+      <br> Organization:
+      <input type="text" name="attn_organization">
+    </fieldset>
+    <br>
+    <fieldset>
+      <legend>Shipping Address</legend>
+      Address:
+      <input type="text" name="street_address">
+      <br> City:
+      <input type="text" name="city">
+      <br> Province/State:
+      <input type="text" name="state_or_province">
+      <br> Country:
+      <input type="text" name="country">
+      <br> Postal Code:
+      <input type="text" name="postal_code">
+    </fieldset>
+    <br>
     <input type="submit" value="Submit">
   </form>
 
