@@ -483,4 +483,12 @@ Here's what `index.html` should look like:
 
 Now open http://localhost:3000 and try it out!
 
-So what's happening here is when you type your User ID in the text field and hit the submit button we use the POST route we made earlier to create a new record in our database. As we can see by the random string of numbers and letters we receive back, we are successfully viewing the barcode of our created entry.
+![screenshot of index](/screenshots/001.png)
+
+So what's happening here is when you type your User ID in the text field and hit the submit button we use the POST route we made earlier to create a new record in our database.
+
+![screenshot of barcode result](/screenshots/002.png)
+
+As we can see by the random string of numbers and letters we receive back, we are successfully viewing the barcode of our created entry.
+
+![screenshot of JSON from database](/screenshots/003.png)
