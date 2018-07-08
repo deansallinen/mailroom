@@ -6,21 +6,23 @@ This app intends to solve a client's problem with interoffice mail. Employees wi
 
 ## Setup
 
-We'll start by creating a new directory on the command line with `mkdir mailroom` and run `npm install express-generator -g` to install the tool that will allow us to skeleton out our app quickly.
+We'll start by creating a new directory on the command line with `$ mkdir mailroom` and run `$ npm install express-generator -g` to install the tool that will allow us to skeleton out our app quickly.
 
-Run `express --no-view --git --force` to skeleton an app with no templating engine (because we plan on using React) as well as an empty .gitignore file and we add the force flag because the directory currently contains this markdown file.
+Run `$ express --no-view --git --force` to skeleton an app with no templating engine (because we plan on using React) as well as an empty .gitignore file and we add the force flag because the directory currently contains this markdown file.
 
-Now we can begin installing packages for our app. First run `npm install` to install the packages required by express. Now would also be a good time to initialize a git repository.
+Now we can begin installing packages for our app. First run `$ npm install` to install the packages required by express. Now would also be a good time to initialize a git repository.
 
-Run `git init` and `git add -A` to add the beginnings of our app to the git repository, now make the first commit with `git commit -m "initialize repo"`. Now our app is under version control and if we make a mistake adding new features, we can easily roll back to a time when our app worked!
+Run `$ git init` and `$ git add -A` to add the beginnings of our app to the git repository, now make the first commit with `$ git commit -m "initialize repo"`. Now our app is under version control and if we make a mistake adding new features, we can easily roll back to a time when our app worked!
 
-Okay lets test our express installation. Run `npm start` and open up a browser to http://localhost:3000 where you should see: Express Welcome to Express. This means the installation was successful.
+Okay lets test our express installation. Run `$ npm start` and open up a browser to http://localhost:3000 where you should see the following image. This means the installation was successful.
+
+![screenshot of express default page](/screenshots/000.png)
 
 ## Database
 
-Let's set up the database. First, stop the server with `CTRL-C`. Since we will be using Sqlite for our database we can run `npm install sqlite bluebird --save`. I've chosen to use sqlite instead of sqlite3 as this lets us use promises instead of callbacks to access the database. Also installed bluebird as this seems to be the consensus over ES6 promises. Not sure I like that. But lets get something working and come back to that.
+Let's set up the database. First, stop the server with `CTRL-C`. Since we will be using Sqlite for our database we can run `$ npm install sqlite bluebird --save`. I've chosen to use sqlite instead of sqlite3 as this lets us use promises instead of callbacks to access the database. Also installed bluebird as this seems to be the consensus over ES6 promises. Not sure I like that. But lets get something working and come back to that.
 
-Create a folder for migrations, which will be useful going forward when we want to modify the database schema `mkdir migrations && cd migrations`. Lets create our first migration `touch 001-init.sql` and write some SQL.
+Create a folder for migrations, which will be useful going forward when we want to modify the database schema `$ mkdir migrations && cd migrations`. Lets create our first migration `$ touch 001-init.sql` and write some SQL.
 
 ```sql
 -- Up
@@ -73,11 +75,13 @@ Which will create a database file in our root directory (if it doesn't already e
 
 ## Writing Tests
 
-For running tests we will install Mocha, Chai, and ChaiHTTP. Run `npm install mocha -g && npm install mocha chai chai-http --save-dev` then `mkdir test`
+For running tests we will install Mocha, Chai, and ChaiHTTP.
+
+Run `$ npm install mocha -g && npm install mocha chai chai-http --save-dev` then `$ mkdir test`
 
 ## Routing
 
-Lets start by creating a test at `touch test/routes.spec.js` where we will add the tests for our API routes. First include the above libraries and tell Chai to use the HTTP module.
+Lets start by creating a test file with `$ touch test/routes.spec.js` where we will add the tests for our API routes. First include the above libraries and tell Chai to use the HTTP module.
 
 ```javascript
 const chai = require('chai');
@@ -110,7 +114,7 @@ describe('API Routes', function() {
 });
 ```
 
-Now if we run `mocha` on the command line to start our test we see the following error:
+Now if we run `$ mocha` on the command line to start our test we see the following error:
 
 ```
 deans-Mac-Pro:mailroom dean$ mocha
@@ -155,7 +159,7 @@ So now when our client hits the '/api/v1/parcels' route the server opens a conne
 
 ### POST
 
-Before we write the code that lets us add a new parcel, we need some helpers. Lets run `npm install uuid -s` and in `app.js` add
+Before we write the code that lets us add a new parcel, we need some helpers. Lets run `$ npm install uuid -s` and in `app.js` add
 
 ```javascript
 const uuidv4 = require('uuid/v4');
@@ -240,7 +244,7 @@ app.post('/api/v1/parcels', async (req, res, next) => {
 });
 ```
 
-Here when a client hits the `/api/v1/parcels` route with a POST request and supplies address information that is saved in the database as a new record. Notice how we are using `uuidv4()` to generate a unique code for each record. We return the uuid as the `res`, the idea being we will use this to generate the barcode in the front-end. We also use `new Date().toISOString()` to add a timestamp of when that record was created.
+Here when a client hits the `/api/v1/parcels` route with a POST request and supplies address information that is saved in the database as a new record. Notice how we are using `uuidv4()` to generate a unique code for each record. We return the uuid as the response, the idea being we will use this to generate the barcode in the front-end. We also use `new Date().toISOString()` to add a timestamp of when that record was created.
 
 If you're wondering (like I did) why it seems like the POST request is updating and not inserting new values each time the test is run, it's because we added `{ force: 'last' }` to re-run the latest migration every time we restart our server. So even though it looks like the barcode and creation_date are changing in place, it's really:
 
@@ -274,7 +278,7 @@ describe('GET /api/v1/parcels/:barcode', function() {
 
 Here we are using a barcode from one of our sample rows in the 001-init.sql file as these are static and easy to reference.
 
-Run the test with `mocha` and see that it fails with a 404. Now we need to write the route. In app.js under our other routes add:
+Run the test with `$ mocha` and see that it fails with a 404. Now we need to write the route. In app.js under our other routes add:
 
 ```javascript
 app.get('/api/v1/parcels/:barcode', async (req, res, next) => {
