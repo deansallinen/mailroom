@@ -507,8 +507,6 @@ So what's happening here is when you type your User ID in the text field and hit
 
 As we can see by the random string of numbers and letters we receive back, we are successfully viewing the barcode of our created entry.
 
-![screenshot of JSON from database](/screenshots/003.png)
-
 At this point we will add additional fields from our database.
 
 We will also add any remaining fields to the routes.
@@ -516,3 +514,7 @@ We will also add any remaining fields to the routes.
 Now our webpage looks like this! (I also just learned how to take nicer screenshots of the selected window)
 
 ![screenshot of user view](/screenshots/004.png)
+
+And our fields are nicely populating in the database.
+
+![screenshot of JSON from database](/screenshots/005.png)
