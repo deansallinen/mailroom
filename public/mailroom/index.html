@@ -1,0 +1,18 @@
+<html>
+
+<head>
+    <title>Express</title>
+    <link rel="stylesheet" href="/stylesheets/style.css">
+</head>
+
+<body>
+    <h1>Mailroom View</h1>
+    <p>Please enter a barcode to retrieve a record</p>
+    <form action="/api/v1/parcels" method="get">
+        Barcode:
+        <input type="text" name="barcode">
+        <input type="submit" value="Submit">
+    </form>
+</body>
+
+</html>

@@ -470,7 +470,9 @@ And it works! Now we have a fully functional basic CRUD API.
 
 I would like to have the front end built with React to take advantage of component architecture, however to quickly test that everything works we can build a simple HTML page.
 
-We should already have a page called `index.html` in our ./public folder. Let's open that up and add a basic form.
+We should already have a page called `index.html` in our ./public folder. Let's open that up and add a basic form for our users.
+
+### User view
 
 Here's what `index.html` should look like:
 
@@ -518,3 +520,61 @@ Now our webpage looks like this! (I also just learned how to take nicer screensh
 And our fields are nicely populating in the database.
 
 ![screenshot of JSON from database](/screenshots/005.png)
+
+### Mailroom View
+
+We want our mailroom to be able to nput a barcode, view a record, add additional information, and save it to the database.
+
+Lets create a new folder and HTML file `$ touch mailroom/index.html` and open it up, add the following:
+
+```html
+<html>
+
+<head>
+    <title>Express</title>
+    <link rel="stylesheet" href="/stylesheets/style.css">
+</head>
+
+<body>
+    <h1>Mailroom View</h1>
+    <p>Please enter a barcode to retrieve a record</p>
+    <form action="/api/v1/parcels" method="get">
+        Barcode:
+        <input type="text" name="barcode">
+        <input type="submit" value="Submit">
+    </form>
+</body>
+
+</html>
+```
+
+Now navigate to http://localhost:3000/mailroom/ and see that it appears!
+
+![screenshot of mailroom view](/screenshots/006.png)
+
+If we enter a barcode from our database and hit submit...
+
+Uh oh.
+![screenshot of mailroom view](/screenshots/007.png)
+
+We get back an array of all our parcels. Not what we're looking for. If we look in the address bar we can see why this is happening: the barcode is being sent to the /api/v1/parcels route as a query parameter instead of using the /api/v1/:barcode route we defined earlier.
+
+Now we can decide to use the barcode as a query parameter and refactor our routes, or we can see if the form can submit to our /api/v1/:barcode route as a path variable. I'm sure one answer is better than the other for this scenario, but as our HTML form is presenting us with the query option by default we will try that first.
+
+We will change our route to the following which will show us a specific parcel when a barcode is supplied as a query parameter.
+
+```javascript
+app.get('/api/v1/parcels', async (req, res, next) => {
+  try {
+    const query = { $barcode: req.query.barcode };
+    const db = await dbPromise;
+    const parcels = await db.all(
+      'SELECT * FROM parcels WHERE ($barcode IS NULL OR barcode = $barcode)',
+      query
+    );
+    res.send(parcels);
+  } catch (err) {
+    next(err);
+  }
+});
+```

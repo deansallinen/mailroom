@@ -23,22 +23,23 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Routes
+// app.get('/api/v1/parcels', async (req, res, next) => {
+//   try {
+//     const db = await dbPromise;
+//     const parcels = await db.all('SELECT * FROM parcels');
+//     res.send(parcels);
+//   } catch (err) {
+//     next(err);
+//   }
+// });
+
 app.get('/api/v1/parcels', async (req, res, next) => {
   try {
+    const query = { $barcode: req.query.barcode };
     const db = await dbPromise;
-    const parcels = await db.all('SELECT * FROM parcels');
-    res.send(parcels);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get('/api/v1/parcels/:barcode', async (req, res, next) => {
-  try {
-    const db = await dbPromise;
-    const parcels = await db.get(
-      'SELECT * FROM parcels WHERE barcode = ?',
-      req.params.barcode
+    const parcels = await db.all(
+      'SELECT * FROM parcels WHERE ($barcode IS NULL OR barcode = $barcode)',
+      query
     );
     res.send(parcels);
   } catch (err) {
