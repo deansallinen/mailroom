@@ -578,3 +578,9 @@ app.get('/api/v1/parcels', async (req, res, next) => {
   }
 });
 ```
+
+### Adding React
+
+We are going to use React for our frontend framework to handle dynamic content changes, and because we're looking to have it rendered server-side we will also use nextjs.
+
+`$ npm install -s react react-dom next`
