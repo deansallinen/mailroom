@@ -249,7 +249,10 @@ app.post('/api/v1/parcels', async (req, res, next) => {
             $creation_date)`,
       payload
     );
-    res.send(uuid);
+    res.send({
+      message: 'Success!',
+      barcode: uuid
+    });
   } catch (err) {
     next(err);
   }
@@ -583,4 +586,473 @@ app.get('/api/v1/parcels', async (req, res, next) => {
 
 We are going to use React for our frontend framework to handle dynamic content changes, and because we're looking to have it rendered server-side we will also use nextjs.
 
-`$ npm install -s react react-dom next`
+Let's make a client directory to handle our client-side code `$ mkdir client && cd client` then initialize a new package.json with `$ npm init -y` and install next with `$ npm install -s react react-dom next`
+
+If we add the following to our package.json
+
+```javascript
+{
+  "scripts": {
+    "dev": "next",
+    "build": "next build",
+    "start": "next start"
+  }
+}
+```
+
+and create a pages directory with an index.js file
+
+`$ mkdir pages && touch pages/index.js`
+
+now add a simple export
+
+```javascript
+export default () => {
+  return <div>Hello World</div>;
+};
+```
+
+run `$ npm run dev` and open http://localhost:3030 (in my case)to see our message!
+
+Let's rewrite our two pages as components.
+
+Starting with a `users.js` in our pages folder
+
+```javascript
+import React, { Component } from 'react';
+
+export default class UserPage extends Component {
+  render() {
+    return (
+      <div>
+        <h1>User View</h1>
+        <p>Please fill out the following form to generate your shipping code</p>
+
+        <form action="/api/v1/parcels" method="post">
+          <fieldset>
+            <legend>User Information</legend>
+            User ID:
+            <input type="text" name="user_id" />
+            <br /> File Number:
+            <input type="text" name="file_id" />
+          </fieldset>
+          <br />
+          <fieldset>
+            <legend>Package Information</legend>
+            <input type="radio" name="shipment_type" value="mail" /> Mail
+            <input type="radio" name="shipment_type" value="parcel" /> Parcel
+            <br /> Destination:
+            <select name="shipment_locale">
+              <option value="local">Within the Lower Mainland</option>
+              <option value="national">Within Canada</option>
+              <option value="international">International</option>
+            </select>
+            <br /> Shipping Speed:
+            <select name="shipment_speed">
+              <option value="one">One</option>
+              <option value="two">Two</option>
+              <option value="three">Three</option>
+            </select>
+          </fieldset>
+          <br />
+          <fieldset>
+            <legend>Recipient Information</legend>
+            Recipient Name:
+            <input type="text" name="attn_name" />
+            <br /> Phone Number:
+            <input type="tel" name="attn_phone" />
+            <br /> Organization:
+            <input type="text" name="attn_organization" />
+          </fieldset>
+          <br />
+          <fieldset>
+            <legend>Shipping Address</legend>
+            Address:
+            <input type="text" name="street_address" />
+            <br /> City:
+            <input type="text" name="city" />
+            <br /> Province/State:
+            <input type="text" name="state_or_province" />
+            <br /> Country:
+            <input type="text" name="country" />
+            <br /> Postal Code:
+            <input type="text" name="postal_code" />
+          </fieldset>
+          <br />
+          <input type="submit" value="Submit" />
+        </form>
+      </div>
+    );
+  }
+}
+```
+
+Which will now be available at http://localhost:3030/user
+
+And make a new file for our mailroom at /pages/mailroom.js
+
+```javascript
+const MailroomPage = () => {
+  return (
+    <div>
+      <h1>Mailroom View</h1>
+      <p>Please enter a barcode to retrieve a record</p>
+      <form action="/api/v1/parcels" method="get">
+        Barcode:
+        <input type="text" name="barcode" />
+        <input type="submit" value="Submit" />
+      </form>
+    </div>
+  );
+};
+
+export default MailroomPage;
+```
+
+Which will now be available at http://localhost:3030/mailroom
+
+### Showing the QR code on submission
+
+Next steps are to handle the form using React's "controlled components" and display the resulting barcode as a QR code on the same page.
+
+We'll start by adding a constructor and input handler to our userpage component
+
+```javascript
+export default class UserPage extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      user_id: '',
+      file_id: '',
+      shipment_type: '',
+      shipment_locale: '',
+      shipment_speed: '',
+      attn_name: '',
+      attn_phone: '',
+      attn_organization: '',
+      street_address: '',
+      city: '',
+      state_or_province: '',
+      country: '',
+      postal_code: ''
+    };
+
+    this.handleChange = this.handleInputChange.bind(this);
+  }
+
+  handleInputChange(event) {
+    const target = event.target;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
+    const name = target.name;
+    this.setState({ [name]: value });
+  }
+  ...
+```
+
+and on each `<input>` we will add `value={this.state.###} onChange={this.handleChange}` where ### is the name of that input, for example:
+
+```javascript
+<input
+  type="text"
+  name="user_id"
+  value={this.state.user_id}
+  onChange={this.handleChange}
+/>
+```
+
+our Radio buttons will look slightly different:
+
+```javascript
+<input
+  type="radio"
+  name="shipment_type"
+  value="mail"
+  checked={this.state.shipment_type === 'mail'}
+  onChange={this.handleChange}
+/>
+```
+
+as will our Select options:
+
+```javascript
+<select
+  name="shipment_locale"
+  value={this.state.shipment_locale}
+  onChange={this.handleChange}
+>
+  <option value="local">Within the Lower Mainland</option>
+  <option value="national">Within Canada</option>
+  <option value="international">International</option>
+</select>
+```
+
+Now if we were to check in React Developer Tools (a Chrome addon) we should see all our state values populating correctly
+
+![screenshot of React Developer Tools](/screenshots/009.png)
+
+Now lets change the form behaviour:
+
+```javascript
+<form action="/api/v1/parcels" method="post">
+```
+
+changes to
+
+```javascript
+<form onSubmit={this.handleSubmit}>
+```
+
+and we'll write a function to handle the POST request in Javascript.
+
+add to our constructor:
+`this.handleSubmit = this.handleSubmit.bind(this);`
+and create the function:
+
+```javascript
+  handleSubmit(event) {
+    alert('Test' + JSON.stringify(this.state));
+    event.preventDefault();
+  }
+```
+
+And now when we hit the Submit button we should see our data appear in an alert box in the browser window.
+
+### CORS
+
+Let's modify the `handleSubmit` function to post JSON to our API route.
+
+```javascript
+  handleSubmit(event) {
+    fetch(`http://localhost:3000/api/v1/parcels`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(this.state)
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log(data.message);
+        this.setState({ barcode: data.barcode });
+      })
+      .catch(error => console.error(error));
+    event.preventDefault();
+```
+
+Now we run into a CORS (Cross Origin Resource Sharing) issue. This is because, in my case, the API server is running on localhost:3000 and the nextjs server is running on localhost:3030
+
+To solve this: in our root project directory (ie. not in the client folder) run `$ npm install -s cors`. Open app.js and add
+
+```javascript
+const cors = require('cors');
+
+app.use(cors());
+```
+
+now restart the server `$ npm start` and try the request from the client again.
+
+We should see a "Success!" message in our console, and our barcode in our component's state!
+
+![screenshot of React Developer Tools - success](/screenshots/010.png)
+
+### The QR Code
+
+Next up: creating a component that will display our QR code.
+
+Let start with a components folder in our client directory `$ mkdir client/components` and create a file called `label.js`
+
+In `label.js` we'll create a simple functional component that accepts props.
+
+```javascript
+import React from 'react';
+
+export default props => {
+  return <div>{props.barcode}</div>;
+};
+```
+
+In `user.js` we'll add to the top:
+
+```javascript
+import Label from '../components/label';
+```
+
+and under the closing form tag add a `<Label barcode={this.state.barcode} />` tag.
+
+Now when we submit the form, our barcode string appears!
+
+In our client directory, run `$ npm install -s bwip-js` which is the library that will allow us to generate QR codes.
+
+In `label.js` add our import statement and modify the functional component to a class component:
+
+```javascript
+import React, { Component } from 'react';
+import bwipjs from 'bwip-js';
+
+export default class Label extends Component {
+  constructor(props) {
+    super(props);
+  }
+
+  componentDidUpdate() {
+    bwipjs(
+      'target-canvas',
+      {
+        bcid: 'qrcode',
+        text: this.props.barcode
+      },
+      (err, cvs) => {
+        if (err) {
+          console.error(err);
+        }
+      }
+    );
+  }
+
+  render() {
+    return (
+      <div>
+        <canvas id="target-canvas" />
+      </div>
+    );
+  }
+}
+```
+
+Now fill out the form and click submit. Voila! A QR code appears.
+
+### The Mailroom View
+
+To make the next part easier, I made a component that lists all existing records in the database.
+
+```javascript
+import React, { Component } from 'react';
+
+export default class LabelList extends Component {
+  constructor(props) {
+    super(props);
+
+    this.state = { data: [] };
+  }
+
+  componentDidMount = () => {
+    fetch(`http://localhost:3000/api/v1/parcels`)
+      .then(response => response.json())
+      .then(data => this.setState({ data: data }))
+      .catch(err => console.error(err));
+  };
+
+  render() {
+    return (
+      <div>
+        <h3>All Records</h3>
+        {this.state.data.map(label => {
+          return <div key={label.id}>{label.barcode}</div>;
+        })}
+      </div>
+    );
+  }
+}
+```
+
+then `import LabelList from '../components/labelList';` and add `<LabelList />` under the form in the mailroom view.
+
+![screenshot of mailroom barcode list](/screenshots/011.png)
+
+Now it will be easy to grab a barcode to test.
+
+Lets create a component to render our retrieved record from the database:
+
+```javascript
+// Record.js
+import React, { Component } from 'react';
+
+export default class Record extends Component {
+  constructor(props) {
+    super(props);
+
+    this.state = {};
+  }
+
+  render() {
+    return <div>{this.props.data.barcode}</div>;
+  }
+}
+```
+
+And let's modify the mailroom with some of the same code we used in the user view, handleSubmit and handleChange
+
+```javascript
+// mailroom.js
+import React, { Component } from 'react';
+import LabelList from '../components/labelList';
+import Record from '../components/Record';
+
+export class MailroomPage extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { barcode: '', data: {} };
+
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+
+  handleSubmit(event) {
+    fetch(`http://localhost:3000/api/v1/parcels?barcode=${this.state.barcode}`)
+      .then(response => response.json())
+      .then(data => {
+        this.setState({ data: data[0] });
+      })
+      .catch(error => console.error(error));
+    event.preventDefault();
+  }
+
+  handleChange(event) {
+    const target = event.target;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
+    const name = target.name;
+    this.setState({ [name]: value });
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>Mailroom View</h1>
+        <p>Please enter a barcode to retrieve a record</p>
+        <form onSubmit={this.handleSubmit}>
+          Barcode:
+          <input
+            type="text"
+            name="barcode"
+            value={this.state.attn_name}
+            onChange={this.handleChange}
+          />
+          <input type="submit" value="Submit" />
+        </form>
+        <Record data={this.state.data} />
+        <LabelList />
+      </div>
+    );
+  }
+}
+
+export default MailroomPage;
+```
+
+Now when we submit a barcode, we should see the name of our recipient.
+
+### Fleshing things out a bit.
+
+Here are some easy steps I completed without documenting:
+
+- Header component with navigation links to make it easy to swap between views.
+- More information on record retrieval in the Record component.
+- More fields in the Label component to give the user feedback on their submission
+
+## Next Steps
+
+And the next steps for the project:
+
+1.  Add the ability for the Mailroom to edit retrieved information and update the database.
+2.  Autofocus the Barcode entry field to make it easier to use a QR Code scanner
+3.  Format the Label the user creates to make it nicely printable.
+4.  Add authentication so only authorized users can access the Mailroom.
