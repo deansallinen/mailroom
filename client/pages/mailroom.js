@@ -14,7 +14,7 @@ export class MailroomPage extends Component {
   }
 
   handleSubmit(event) {
-    fetch(`http://localhost:3000/api/v1/parcels?barcode=${this.state.barcode}`)
+    fetch(`http://100.115.92.195:3000/api/v1/parcels?barcode=${this.state.barcode}`)
       .then(response => response.json())
       .then(data => {
         this.setState({ data: data[0] });

@@ -8,7 +8,7 @@ export default class LabelList extends Component {
   }
 
   componentDidMount = () => {
-    fetch(`http://localhost:3000/api/v1/parcels`)
+    fetch(`http://100.115.92.195:3000/api/v1/parcels`)
       .then(response => response.json())
       .then(data => this.setState({ data: data }))
       .catch(err => console.error(err));
@@ -18,7 +18,7 @@ export default class LabelList extends Component {
     return (
       <div>
         <h3>All Records</h3>
-        {this.state.data.map(label => {
+        {this.state.data.map((label) => {
           return <div key={label.id}>{label.barcode}</div>;
         })}
       </div>

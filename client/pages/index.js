@@ -1,3 +1,5 @@
+import Header from '../components/Header'
+
 export default () => {
-  return <div>Hello World</div>;
+  return <Header page="Welcome"/>;
 };

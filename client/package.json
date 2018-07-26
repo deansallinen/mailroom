@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@zeit/next-css": "^0.2.0",
     "bwip-js": "^1.6.3",
     "next": "^6.1.1",
     "react": "^16.4.1",
